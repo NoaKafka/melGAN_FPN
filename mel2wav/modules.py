@@ -165,17 +165,74 @@ class NLayerDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, True),
         )
 
-        model["layer_%d" % (n_layers + 2)] = WNConv1d(
-            nf, 1, kernel_size=3, stride=1, padding=1
-        )
+        #model["layer_%d" % (n_layers + 2)] = WNConv1d(
+        #    nf, 1, kernel_size=3, stride=1, padding=1
+        #)
 
         self.model = model
 
+		self.toplayer = nn.Conv1d(1024, 256, kernel_size=1, stride=1, padding=0) 
+		
+		# Smooth Layer
+		self.smooth1 = nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.smooth2 = nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.smooth3 = nn.Conv1d(16, 16, kernel_size=3, stride=1, padding=1)
+		self.smooth4 = nn.Conv1d(16, 16, kernel_size=3, stride=1, padding=1)
+
+		#lateral layers
+		self.latlayer1 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer3 = nn.Conv2d( 256, 64, kernel_size=1, stride=1, padding=0)
+		self.latlayer4 = nn.Conv2d( 64, 64, kernel_size=1, stride=1, padding=0)
+
+		def _upsample_add(self, x, y):
+        '''Upsample and add two feature maps.
+        Args:
+          x: (Variable) top feature map to be upsampled.
+          y: (Variable) lateral feature map.
+        Returns:
+          (Variable) added feature map.
+        Note in PyTorch, when input size is odd, the upsampled feature map
+        with `F.upsample(..., scale_factor=2, mode='nearest')`
+        maybe not equal to the lateral feature map size.
+        e.g.
+        original input size: [N,_,15,15] ->
+        conv2d feature map size: [N,_,8,8] ->
+        upsampled feature map size: [N,_,16,16]
+        So we choose bilinear upsample which supports arbitrary output sizes.
+        '''
+        _,_,L = y.size()
+        return F.upsample(x, size=(L), mode='bilinear') + y
+
     def forward(self, x):
         results = []
-        for key, layer in self.model.items():
+		bottom_up = []
+        # bottom - up
+		for key, layer in self.model.items():
             x = layer(x)
+			
+			bottom_up.append(x)
             results.append(x)
+
+		# top - down
+		p5 = self.toplayer(bottom_up[5])
+		p4 = self.upsample_add(p5, self.latlayer1(bottom_up[4]))
+		p3 = self.upsample_add(p4, self.latlayer2(bottom_up[3]))
+		p2 = self.upsample_add(p3, self.latlayer3(bottom_up[2]))
+		p1 = self.upsample_add(p2, self.latlayer4(bottom_up[1]))
+
+		# smooth
+		p4 = self.smooth1(p4)
+		p3 = self.smooth2(p3)
+		p2 = self.smooth3(p2)
+		p1 = self.smooth4(p1)
+
+		results.append(p1)
+		results.append(p2)
+		results.append(p3)
+		results.append(p4)
+		results.append(p5)
+
         return results
 
 
