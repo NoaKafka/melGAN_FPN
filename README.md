@@ -4,5 +4,5 @@
 - cd ./wavs
 - dir /b > filename.txt
 
-## execute train.py in script folder
+## execute train.py in scripts folder
 - python train.py
