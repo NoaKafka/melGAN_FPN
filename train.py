@@ -25,7 +25,7 @@ def parse_args():
 
     parser.add_argument("--ndf", type=int, default=16)
     parser.add_argument("--num_D", type=int, default=3)
-    parser.add_argument("--n_layers_D", type=int, default=3)
+    parser.add_argument("--n_layers_D", type=int, default=4)
     parser.add_argument("--downsamp_factor", type=int, default=4)
     parser.add_argument("--lambda_feat", type=float, default=10)
     parser.add_argument("--cond_disc", action="store_true")
@@ -35,9 +35,9 @@ def parse_args():
     parser.add_argument("--seq_len", type=int, default=8192)
 
     parser.add_argument("--epochs", type=int, default=3000)
-    parser.add_argument("--log_interval", type=int, default=1)
-    parser.add_argument("--save_interval", type=int, default=10000)
-    parser.add_argument("--n_test_samples", type=int, default=4)
+    parser.add_argument("--log_interval", type=int, default=100)
+    parser.add_argument("--save_interval", type=int, default=1000)
+    parser.add_argument("--n_test_samples", type=int, default=8)
     args = parser.parse_args()
     return args
 
@@ -188,7 +188,7 @@ def main():
                     for i, (voc, _) in enumerate(zip(test_voc, test_audio)):
                         pred_audio = netG(voc)
                         pred_audio = pred_audio.squeeze().cpu()
-                        save_sample(root / ("generated_{}_{}.wav".format(i, epoch)), 22050, pred_audio)
+                        save_sample(root / ("generated_%d.wav" % i), 22050, pred_audio)
                         writer.add_audio(
                             "generated/sample_%d.wav" % i,
                             pred_audio,
