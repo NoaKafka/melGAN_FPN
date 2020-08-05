@@ -160,32 +160,38 @@ class NLayerDiscriminator(nn.Module):
             )
 
         nf = min(nf * 2, 1024)
-        model["layer_%d" % (n_layers + 1)] = nn.Sequential(
-            WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
-            nn.LeakyReLU(0.2, True),
-        )
+        #model["layer_%d" % (n_layers + 1)] = nn.Sequential(
+        #    WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
+        #    nn.LeakyReLU(0.2, True),
+        #)
 
         #model["layer_%d" % (n_layers + 2)] = WNConv1d(
         #    nf, 1, kernel_size=3, stride=1, padding=1
         #)
 
         self.model = model
+        self.toplayer = nn.Conv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
 
-		self.toplayer = nn.Conv1d(1024, 256, kernel_size=1, stride=1, padding=0) 
-		
 		# Smooth Layer
-		self.smooth1 = nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1)
-        self.smooth2 = nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1)
-        self.smooth3 = nn.Conv1d(16, 16, kernel_size=3, stride=1, padding=1)
-		self.smooth4 = nn.Conv1d(16, 16, kernel_size=3, stride=1, padding=1)
+
+        self.smooth1 = WNConv1d(1024, 256, kernel_size=3, stride=1, padding=1)
+        self.smooth2 = WNConv1d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.smooth3 = WNConv1d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.smooth4 = WNConv1d(16, 16, kernel_size=3, stride=1, padding=1)
 
 		#lateral layers
-		self.latlayer1 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
-        self.latlayer2 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
-        self.latlayer3 = nn.Conv2d( 256, 64, kernel_size=1, stride=1, padding=0)
-		self.latlayer4 = nn.Conv2d( 64, 64, kernel_size=1, stride=1, padding=0)
 
-		def _upsample_add(self, x, y):
+        self.latlayer1 = WNConv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = WNConv1d(256, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer3 = WNConv1d( 64, 64, kernel_size=1, stride=1, padding=0)
+        self.latlayer4 = WNConv1d( 16, 16, kernel_size=1, stride=1, padding=0)
+
+        self.conv1d_1 = WNConvTranspose1d(1024,256, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        self.conv1d_2 = WNConvTranspose1d(256,64, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        self.conv1d_3 = WNConvTranspose1d(64,16, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        self.conv1d_4 = WNConvTranspose1d(16,1, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+
+    def upsample_add(self, x, y):
         '''Upsample and add two feature maps.
         Args:
           x: (Variable) top feature map to be upsampled.
@@ -202,38 +208,39 @@ class NLayerDiscriminator(nn.Module):
         So we choose bilinear upsample which supports arbitrary output sizes.
         '''
         _,_,L = y.size()
-        return F.upsample(x, size=(L), mode='bilinear') + y
+        k = F.upsample(x, L) + y
+        #print(k.shape)
+        return k 
 
     def forward(self, x):
-        results = []
-		bottom_up = []
+        bottom_up = []
+        top_down = []
         # bottom - up
-		for key, layer in self.model.items():
+        for key, layer in self.model.items():
             x = layer(x)
-			
-			bottom_up.append(x)
-            results.append(x)
+            bottom_up.append(x)
+            #print(x.shape)
+            #results.append(x)
 
-		# top - down
-		p5 = self.toplayer(bottom_up[5])
-		p4 = self.upsample_add(p5, self.latlayer1(bottom_up[4]))
-		p3 = self.upsample_add(p4, self.latlayer2(bottom_up[3]))
-		p2 = self.upsample_add(p3, self.latlayer3(bottom_up[2]))
-		p1 = self.upsample_add(p2, self.latlayer4(bottom_up[1]))
+        bottom_up.reverse()
 
-		# smooth
-		p4 = self.smooth1(p4)
-		p3 = self.smooth2(p3)
-		p2 = self.smooth3(p2)
-		p1 = self.smooth4(p1)
+        bottom_up[0] = self.latlayer1(bottom_up[0])
+        top_down.append(bottom_up[0])
 
-		results.append(p1)
-		results.append(p2)
-		results.append(p3)
-		results.append(p4)
-		results.append(p5)
+        result = self.conv1d_1(bottom_up[0]) + self.latlayer2(bottom_up[1])
+        top_down.append(result)
+        
+        result = self.conv1d_2(result) + self.latlayer3(bottom_up[2])
+        top_down.append(result)
 
-        return results
+        result = self.conv1d_3(result) + self.latlayer4(bottom_up[3])
+        top_down.append(result)
+
+        result = self.conv1d_4(result)
+        top_down.append(result)
+
+        #print('resulted!!!!!!!!!!')
+        return top_down
 
 
 class Discriminator(nn.Module):
