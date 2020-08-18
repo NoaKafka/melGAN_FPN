@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--n_residual_layers", type=int, default=3)
 
     parser.add_argument("--ndf", type=int, default=16)
-    parser.add_argument("--num_D", type=int, default=3)
+    parser.add_argument("--num_D", type=int, default=1)
     parser.add_argument("--n_layers_D", type=int, default=4)
     parser.add_argument("--downsamp_factor", type=int, default=4)
     parser.add_argument("--lambda_feat", type=float, default=10)
@@ -188,7 +188,7 @@ def main():
                     for i, (voc, _) in enumerate(zip(test_voc, test_audio)):
                         pred_audio = netG(voc)
                         pred_audio = pred_audio.squeeze().cpu()
-                        save_sample(root / ("generated_%d.wav" % i), 22050, pred_audio)
+                        save_sample(root / ("generated_%d_%d.wav" % epoch, % i), 22050, pred_audio)
                         writer.add_audio(
                             "generated/sample_%d.wav" % i,
                             pred_audio,

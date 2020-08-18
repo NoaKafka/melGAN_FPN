@@ -160,14 +160,14 @@ class NLayerDiscriminator(nn.Module):
             )
 
         nf = min(nf * 2, 1024)
-        #model["layer_%d" % (n_layers + 1)] = nn.Sequential(
-        #    WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
-        #    nn.LeakyReLU(0.2, True),
-        #)
+        model["layer_%d" % (n_layers + 1)] = nn.Sequential(
+            WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
+            nn.LeakyReLU(0.2, True),
+        )
 
-        #model["layer_%d" % (n_layers + 2)] = WNConv1d(
-        #    nf, 1, kernel_size=3, stride=1, padding=1
-        #)
+        model["layer_%d" % (n_layers + 2)] = WNConv1d(
+            nf, 1, kernel_size=3, stride=1, padding=1
+        )
 
         self.model = model
         self.toplayer = nn.Conv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
@@ -186,6 +186,7 @@ class NLayerDiscriminator(nn.Module):
         self.latlayer3 = WNConv1d( 64, 64, kernel_size=1, stride=1, padding=0)
         self.latlayer4 = WNConv1d( 16, 16, kernel_size=1, stride=1, padding=0)
 
+		self.conv1d_0 = WNConvTranspose1d(1024,1024, kernel_size = 5, stride = 1, padding = 2, output_padding = 3) #change
         self.conv1d_1 = WNConvTranspose1d(1024,256, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
         self.conv1d_2 = WNConvTranspose1d(256,64, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
         self.conv1d_3 = WNConvTranspose1d(64,16, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
@@ -223,11 +224,16 @@ class NLayerDiscriminator(nn.Module):
             #results.append(x)
 
         bottom_up.reverse()
+		top_down.append(bottom_up[0])
+		bottom_up.remove(0)
 
         bottom_up[0] = self.latlayer1(bottom_up[0])
         top_down.append(bottom_up[0])
 
-        result = self.conv1d_1(bottom_up[0]) + self.latlayer2(bottom_up[1])
+		result = self.conv1d_0(bottom_up[0]) + self.latlayer1(bottom_up[1])
+        top_down.append(result)
+
+        result = self.conv1d_1(result) + self.latlayer2(bottom_up[2])
         top_down.append(result)
         
         result = self.conv1d_2(result) + self.latlayer3(bottom_up[2])
@@ -239,6 +245,8 @@ class NLayerDiscriminator(nn.Module):
         result = self.conv1d_4(result)
         top_down.append(result)
 
+
+		
         #print('resulted!!!!!!!!!!')
         return top_down
 
@@ -259,5 +267,5 @@ class Discriminator(nn.Module):
         results = []
         for key, disc in self.model.items():
             results.append(disc(x))
-            x = self.downsample(x)
+            #x = self.downsample(x)
         return results
