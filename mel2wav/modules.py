@@ -141,6 +141,11 @@ class NLayerDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, True),
         )
 
+        #model["layer_1"] =  nn.AvgPool1d(4, stride=2, padding=1, count_include_pad=False)
+        #model["layer_2"] =  nn.AvgPool1d(4, stride=2, padding=1, count_include_pad=False)
+        #model["layer_3"] =  nn.AvgPool1d(4, stride=2, padding=1, count_include_pad=False)
+        #model["layer_4"] =  nn.AvgPool1d(4, stride=2, padding=1, count_include_pad=False)
+
         nf = ndf
         stride = downsampling_factor
         for n in range(1, n_layers + 1):
@@ -154,43 +159,59 @@ class NLayerDiscriminator(nn.Module):
                     kernel_size=stride * 10 + 1,
                     stride=stride,
                     padding=stride * 5,
-                    groups=nf_prev // 4,
+                    groups=nf_prev // 2,
                 ),
                 nn.LeakyReLU(0.2, True),
             )
 
-        nf = min(nf * 2, 1024)
-        model["layer_%d" % (n_layers + 1)] = nn.Sequential(
-            WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
-            nn.LeakyReLU(0.2, True),
-        )
+        #nf = min(nf * 2, 1024)
+        #model["layer_%d" % (n_layers + 1)] = nn.Sequential(
+        #    WNConv1d(nf_prev, nf, kernel_size=5, stride=1, padding=2),
+        #    nn.LeakyReLU(0.2, True),
+        #)
 
-        model["layer_%d" % (n_layers + 2)] = WNConv1d(
-            nf, 1, kernel_size=3, stride=1, padding=1
-        )
+        #model["layer_%d" % (n_layers + 2)] = WNConv1d(
+        #    nf, 1, kernel_size=3, stride=1, padding=1
+        #)
+        
 
         self.model = model
         self.toplayer = nn.Conv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
+        
 
-		# Smooth Layer
+        model2 = nn.ModuleDict()
+        self.model2 = model2
 
-        self.smooth1 = WNConv1d(1024, 256, kernel_size=3, stride=1, padding=1)
-        self.smooth2 = WNConv1d(256, 256, kernel_size=3, stride=1, padding=1)
-        self.smooth3 = WNConv1d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.smooth4 = WNConv1d(16, 16, kernel_size=3, stride=1, padding=1)
+        
+        self.top = nn.Sequential(nn.LeakyReLU(0.2),WNConvTranspose1d(256,256,kernel_size = 21,stride=2,padding=10,output_padding=1,))
+        #self.top2 = [nn.LeakyReLU(0.2),WNConvTranspose1d(256,256,kernel_size = 21,stride=2,padding=10,output_padding=1,),]
+        #self.top3 = [nn.LeakyReLU(0.2),WNConvTranspose1d(256,256,kernel_size = 21,stride=2,padding=10,output_padding=1,),]
+        #self.top4 = [nn.LeakyReLU(0.2),WNConvTranspose1d(256,256,kernel_size = 21,stride=2,padding=10,output_padding=1,),]
+
+        self.final = WNConv1d(256, 1, kernel_size=3, stride=1, padding=1)
+		
+        # Smooth Layer
+        
+        #self.smooth1 = WNConv1d(1024, 256, kernel_size=3, stride=1, padding=1)
+        #self.smooth2 = WNConv1d(256, 256, kernel_size=3, stride=1, padding=1)
+        #self.smooth3 = WNConv1d(64, 64, kernel_size=3, stride=1, padding=1)
+        #self.smooth4 = WNConv1d(16, 16, kernel_size=3, stride=1, padding=1)
 
 		#lateral layers
 
-        self.latlayer1 = WNConv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
-        self.latlayer2 = WNConv1d(256, 256, kernel_size=1, stride=1, padding=0)
-        self.latlayer3 = WNConv1d( 64, 64, kernel_size=1, stride=1, padding=0)
-        self.latlayer4 = WNConv1d( 16, 16, kernel_size=1, stride=1, padding=0)
+        #self.latlayer1 = WNConv1d(1024, 1024, kernel_size=1, stride=1, padding=0)
+        self.latlayer_128 = WNConv1d(128, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer_64 = WNConv1d( 64, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer_32 = WNConv1d( 32, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer_16 = WNConv1d( 16, 256, kernel_size=1, stride=1, padding=0)
+        #self.latlayer4 = WNConv1d( 16, 16, kernel_size=1, stride=1, padding=0)
 
-		self.conv1d_0 = WNConvTranspose1d(1024,1024, kernel_size = 5, stride = 1, padding = 2, output_padding = 3) #change
-        self.conv1d_1 = WNConvTranspose1d(1024,256, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
-        self.conv1d_2 = WNConvTranspose1d(256,64, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
-        self.conv1d_3 = WNConvTranspose1d(64,16, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
-        self.conv1d_4 = WNConvTranspose1d(16,1, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        #self.conv1d_0 = WNConvTranspose1d(1024,1024, kernel_size = 5, stride = 1, padding = 2, groups = 1) #change
+        #self.conv1d_00 = WNConvTranspose1d(1024,1024, kernel_size = 41, stride = 4, padding = 20, output_padding = 3) #change
+        #self.conv1d_1 = WNConvTranspose1d(1024,256, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        #self.conv1d_2 = WNConvTranspose1d(256,64, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        #self.conv1d_3 = WNConvTranspose1d(64,16, kernel_size = 41, stride = 4, padding = 20, output_padding = 3)
+        #self.conv1d_4 = WNConvTranspose1d(16,1, kernel_size = 15, padding = 7)
 
     def upsample_add(self, x, y):
         '''Upsample and add two feature maps.
@@ -217,37 +238,35 @@ class NLayerDiscriminator(nn.Module):
         bottom_up = []
         top_down = []
         # bottom - up
+        
         for key, layer in self.model.items():
+            #print('x의 before은 : ',x.shape)
             x = layer(x)
+            #print('x의 after은 : ',x.shape)
             bottom_up.append(x)
-            #print(x.shape)
-            #results.append(x)
+            
+        #print('----------------------------')
 
-        bottom_up.reverse()
-		top_down.append(bottom_up[0])
-		bottom_up.remove(0)
+        
 
-        bottom_up[0] = self.latlayer1(bottom_up[0])
-        top_down.append(bottom_up[0])
-
-		result = self.conv1d_0(bottom_up[0]) + self.latlayer1(bottom_up[1])
-        top_down.append(result)
-
-        result = self.conv1d_1(result) + self.latlayer2(bottom_up[2])
+        result = self.top(bottom_up[4]) + self.latlayer_128(bottom_up[3])
         top_down.append(result)
         
-        result = self.conv1d_2(result) + self.latlayer3(bottom_up[2])
+        result = self.top(result) + self.latlayer_64(bottom_up[2])
+        top_down.append(result)
+        
+        result = self.top(result) + self.latlayer_32(bottom_up[1])
         top_down.append(result)
 
-        result = self.conv1d_3(result) + self.latlayer4(bottom_up[3])
+        result = self.top(result) + self.latlayer_16(bottom_up[0])
         top_down.append(result)
 
-        result = self.conv1d_4(result)
-        top_down.append(result)
+        result = self.final(result)    
+        top_down.append(result)    
+        
+        #for i in range(len(top_down)):
+            #print(top_down[i].shape)
 
-
-		
-        #print('resulted!!!!!!!!!!')
         return top_down
 
 
@@ -255,6 +274,7 @@ class Discriminator(nn.Module):
     def __init__(self, num_D, ndf, n_layers, downsampling_factor):
         super().__init__()
         self.model = nn.ModuleDict()
+        #print('num D는 ',num_D)
         for i in range(num_D):
             self.model[f"disc_{i}"] = NLayerDiscriminator(
                 ndf, n_layers, downsampling_factor
@@ -268,4 +288,5 @@ class Discriminator(nn.Module):
         for key, disc in self.model.items():
             results.append(disc(x))
             #x = self.downsample(x)
+            
         return results
