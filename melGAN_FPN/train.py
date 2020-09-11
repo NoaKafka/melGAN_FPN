@@ -21,10 +21,10 @@ def parse_args():
 
     parser.add_argument("--n_mel_channels", type=int, default=80)
     parser.add_argument("--ngf", type=int, default=32)
-    parser.add_argument("--n_residual_layers", type=int, default=1)
+    parser.add_argument("--n_residual_layers", type=int, default=3)
 
     parser.add_argument("--ndf", type=int, default=16)
-    parser.add_argument("--num_D", type=int, default=1)
+    parser.add_argument("--num_D", type=int, default=2)
     parser.add_argument("--n_layers_D", type=int, default=6)
     parser.add_argument("--downsamp_factor", type=int, default=2)
     parser.add_argument("--lambda_feat", type=float, default=10)
@@ -65,9 +65,9 @@ def main():
     ).cuda()
     fft = Audio2Mel(n_mel_channels=args.n_mel_channels).cuda()
 
-    print(netG)
-    print(netD)
-
+    #print(netG)
+    #print(netD)
+    
     #####################
     # Create optimizers #
     #####################
@@ -75,6 +75,7 @@ def main():
     optD = torch.optim.Adam(netD.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
     if load_root and load_root.exists():
+        #print('불러와야지')
         netG.load_state_dict(torch.load(load_root / "netG.pt"))
         optG.load_state_dict(torch.load(load_root / "optG.pt"))
         netD.load_state_dict(torch.load(load_root / "netD.pt"))
@@ -181,6 +182,8 @@ def main():
             writer.add_scalar("loss/feature_matching", costs[-1][2], steps)
             writer.add_scalar("loss/mel_reconstruction", costs[-1][3], steps)
             steps += 1
+
+            #print('파라미터갯수 : ',netD.p_num)
 
             if steps % args.save_interval == 0:
                 st = time.time()

@@ -6,6 +6,9 @@ from torch.nn.utils import weight_norm
 import numpy as np
 
 
+def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -283,10 +286,15 @@ class Discriminator(nn.Module):
         self.downsample = nn.AvgPool1d(4, stride=2, padding=1, count_include_pad=False)
         self.apply(weights_init)
 
+        self.p_num = 0
+    
+
     def forward(self, x):
         results = []
+        self.p_num = count_parameters(self.model)
         for key, disc in self.model.items():
+            
             results.append(disc(x))
-            #x = self.downsample(x)
+            x = self.downsample(x)
             
         return results
