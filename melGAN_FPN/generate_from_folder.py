@@ -9,9 +9,9 @@ import torch
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--load_path", type=Path, required=True)
-    parser.add_argument("--save_path", type=Path, required=True)
-    parser.add_argument("--folder", type=Path, required=True)
+    parser.add_argument("--load_path", type=Path, default='logs')
+    parser.add_argument("--save_path", type=Path, default='out')
+    parser.add_argument("--folder", type=Path, default='test')
     args = parser.parse_args()
     return args
 
